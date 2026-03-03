@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin SDN TANJUNG BARU</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --p: #2563eb; --s: #f97316; --g: #10b981; --bg: #f1f5f9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; }
+        .sidebar { width: 250px; background: white; height: 100vh; padding: 20px; position: fixed; border-right: 1px solid #ddd; z-index: 1000; }
+        .sidebar h2 { font-size: 1.2rem; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .sidebar a { display: block; padding: 12px; color: #444; text-decoration: none; border-radius: 8px; margin-bottom: 5px; transition: 0.3s; }
+        .sidebar a:hover { background: #f8fafc; color: var(--p); }
+        /* Perbaikan agar class active tidak dianggap error CSS oleh VS Code */
+        .active-link { background-color: #2563eb !important; color: white !important; }
+        .main { margin-left: 250px; flex: 1; padding: 30px; }
+        .stats-container { display: flex; gap: 20px; margin-bottom: 30px; }
+        .card { flex: 1; background: white; padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid var(--p); }
+        .box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; color: white; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; margin-right: 5px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input[type="text"], input[type="file"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; }
+        .badge-success { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2 style="color:var(--p)">SDN TANJUNG BARU</h2>
+    
+    <a href="/admin/dashboard?view=Dashboard" class="<%= (view === 'Dashboard') ? 'active-link' : '' %>"><i class="fas fa-home"></i> Dashboard</a>
+    <a href="/admin/dashboard?view=Siswa" class="<%= (view === 'Siswa') ? 'active-link' : '' %>"><i class="fas fa-user-graduate"></i> Data Siswa</a>
+    <a href="/admin/dashboard?view=Guru" class="<%= (view === 'Guru') ? 'active-link' : '' %>"><i class="fas fa-user-tie"></i> Data Guru</a>
+    <a href="/admin/rekap" class="<%= (view === 'Rekap') ? 'active-link' : '' %>"><i class="fas fa-file-contract"></i> Rekap Siswa</a>
+    <a href="/admin/rekap-guru" class="<%= (view === 'RekapGuru') ? 'active-link' : '' %>"><i class="fas fa-user-check"></i> Rekap Guru</a>
+    <a href="/admin/hari-libur" class="<%= (view === 'Libur') ? 'active-link' : '' %>"><i class="fas fa-calendar-times"></i> Atur Hari Libur</a>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+    
+    <a href="/admin/dashboard?view=Sekolah" class="<%= (view === 'Sekolah') ? 'active-link' : '' %>"><i class="fas fa-school"></i> Data Sekolah</a>
+    <a href="/scanner" target="_blank"><i class="fas fa-qrcode"></i> Buka Scanner</a>
+
+    <a href="/admin/absen-guru" target="_blank" style="background: var(--g); color: white; margin-top: 10px; text-align: center;">
+        <i class="fas fa-camera"></i> Absen Guru (GPS)
+    </a>
+
+    <a href="/auth/logout" style="color:red; margin-top:30px; display:block;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+
+<div class="main">
+    
+    <% if (view === 'Dashboard') { %>
+        <div class="stats-container">
+            <div class="card"><i class="fas fa-users" style="color: var(--p); font-size: 2rem;"></i>
+                <div><h3><%= stats.siswa %></h3><p>TOTAL SISWA</p></div>
+            </div>
+            <div class="card" style="border-color: var(--g);"><i class="fas fa-user-tie" style="color: var(--g); font-size: 2rem;"></i>
+                <div><h3><%= stats.guru %></h3><p>TOTAL GURU</p></div>
+            </div>
+            <div class="card" style="border-color: var(--s);"><i class="fas fa-check" style="color: var(--s); font-size: 2rem;"></i>
+                <div><h3><%= stats.absen %></h3><p>HADIR HARI INI</p></div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3><i class="fas fa-chart-line"></i> Tren Kehadiran Mingguan</h3>
+            <div style="height: 250px;"><canvas id="absensiChart"></canvas></div>
+        </div>
+
+        <div class="box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3><i class="fas fa-history"></i> Kehadiran Hari Ini</h3>
+                <span style="font-size: 12px; color: #666;"><%= new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+            </div>
+            <table>
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th>Jam</th>
+                        <th>Identitas</th>
+                        <th>Kelas</th>
+                        <th>Foto/GPS</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof laporan !== 'undefined' && laporan.length > 0) { %>
+                        <% laporan.forEach(l => { %>
+                        <tr>
+                            <td><%= l.jam_masuk %></td>
+                            <td><b><%= l.nama_lengkap %></b><br><small><%= l.nomor_induk %></small></td>
+                            <td><%= l.kelas %></td>
+                            <td>
+                                <% if (l.foto_selfie) { %>
+                                    <i class="fas fa-camera" style="color:var(--g)"></i> <i class="fas fa-map-marker-alt" style="color:var(--s)"></i>
+                                <% } else { %> - <% } %>
+                            </td>
+                            <td><span class="badge-success">HADIR</span></td>
+                        </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr><td colspan="5" style="text-align:center; color: #999;">Belum ada data hari ini.</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+
+    <% if (view === 'Sekolah') { %>
+        <div class="box">
+            <h3><i class="fas fa-school"></i> Profil Sekolah</h3>
+            <form action="/admin/update-sekolah" method="POST" enctype="multipart/form-data">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div><label>Nama Sekolah</label><input type="text" name="nama_sekolah" value="<%= sekolah.nama_sekolah %>" required></div>
+                    <div><label>Nama Kepala Sekolah</label><input type="text" name="nama_ks" value="<%= sekolah.nama_ks %>" required></div>
+                    <div><label>NIP Kepala Sekolah</label><input type="text" name="nip_ks" value="<%= sekolah.nip_ks || '-' %>"></div>
+                    <div><label>Logo Sekolah</label><input type="file" name="logo_sekolah"></div>
+                </div>
+                <button type="submit" class="btn" style="background: var(--p); margin-top:10px;"><i class="fas fa-save"></i> Simpan Perubahan</button>
+            </form>
+        </div>
+    <% } %>
+
+    <% if (view === 'Siswa' || view === 'Guru') { %>
+        <div class="box">
+            <h3>Data <%= view %></h3>
+            <form action="/admin/tambah-siswa" method="POST" style="display: grid; grid-template-columns: 1fr 2fr 1fr 1fr auto; gap: 10px; align-items: end; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div><label>ID</label><input type="text" name="nomor_induk" required></div>
+                <div><label>Nama</label><input type="text" name="nama_lengkap" required></div>
+                <div><label>Kelas/Jabatan</label><input type="text" name="kelas" required></div>
+                <div><label>Tgl Lahir</label><input type="date" name="tanggal_lahir"></div>
+                <button type="submit" class="btn" style="background:var(--p); height: 40px;">TAMBAH</button>
+            </form>
+            <table>
+                <thead><tr><th>No</th><th>ID</th><th>Nama</th><th>Kelas</th><th>Aksi</th></tr></thead>
+                <tbody>
+                    <% if (typeof pengguna !== 'undefined' && pengguna.length > 0) { %>
+                        <% pengguna.forEach((p, i) => { %>
+                            <tr>
+                                <td><%= i+1 %></td>
+                                <td><%= p.nomor_induk %></td>
+                                <td><%= p.nama_lengkap %></td>
+                                <td><%= p.kelas %></td>
+                                <td><a href="/admin/hapus-pengguna/<%= p.id %>?view=<%= view %>" class="btn" style="background:#ef4444;" onclick="return confirm('Hapus?')">HAPUS</a></td>
+                            </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</div>
+
+<script>
+    /* Menggunakan trik komentar agar VS Code tidak menganggap script ini error */
+    const canvas = document.getElementById('absensiChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        // Kode EJS ditaruh di dalam variabel string sementara agar tidak memicu error merah
+        const rawData = <%- JSON.stringify(grafik || []) %>;
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: rawData.map(function(d) { return new Date(d.tanggal).toLocaleDateString(); }),
+                datasets: [{ 
+                    label: 'Hadir', 
+                    data: rawData.map(function(d) { return d.jumlah; }), 
+                    borderColor: '#2563eb', 
+                    tension: 0.4 
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+</script>
+</body>
+</html>

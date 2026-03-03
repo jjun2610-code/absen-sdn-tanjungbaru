@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scanner SDN TANJUNG BARU</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body style="text-align: center; font-family: sans-serif; background: #1e293b; color: white;">
+    <h1>SCANNER ABSENSI SISWA</h1>
+    <div id="reader" style="width: 500px; margin: auto; background: white; border-radius: 20px; overflow: hidden;"></div>
+    
+    <div id="result-box" style="margin-top: 20px; font-size: 20px;">
+        Arahkan QR Code ke Kamera
+    </div>
+
+    <script>
+        function onScanSuccess(decodedText) {
+            // Berhenti scan sebentar agar tidak double input
+            html5QrcodeScanner.clear();
+
+            // Kirim data ke server
+            fetch('/proses-absen/' + decodedText)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Berhasil!', 'Selamat Pagi ' + data.nama, 'success')
+                    .then(() => location.reload()); // Scan lagi
+                } else {
+                    Swal.fire('Gagal', data.message, 'error')
+                    .then(() => location.reload());
+                }
+            });
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>

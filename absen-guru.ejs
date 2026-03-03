@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absen Guru - SDN TANJUNG BARU</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --p: #b91c1c; --g: #10b981; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        h2 { color: var(--p); margin-bottom: 20px; }
+        
+        #video { width: 100%; border-radius: 10px; background: #000; transform: scaleX(-1); }
+        #canvas { display: none; }
+        
+        .info-gps { background: #eff6ff; padding: 10px; border-radius: 8px; font-size: 13px; margin: 15px 0; color: #1e40af; border: 1px solid #bfdbfe; }
+        .btn-absen { background: var(--g); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-absen:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Notifikasi Sukses */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9998; }
+        .notif-sukses { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; text-align: center; z-index: 9999; width: 85%; max-width: 350px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .notif-sukses i { font-size: 5rem; color: var(--g); margin-bottom: 15px; }
+        .notif-sukses h2 { color: #333; margin: 10px 0; }
+        .notif-sukses p { color: #666; font-size: 14px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fas fa-camera"></i> Absen Guru</h2>
+    <p style="font-size: 14px; color: #666;">Silakan ambil foto selfie di lingkungan sekolah.</p>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="info-gps" id="gpsStatus">
+        <i class="fas fa-map-marker-alt"></i> Mencari lokasi GPS...
+    </div>
+
+    <form id="formAbsen">
+        <input type="hidden" id="lat" name="latitude">
+        <input type="hidden" id="lng" name="longitude">
+        <button type="button" id="btnSubmit" class="btn-absen" disabled>
+            <i class="fas fa-fingerprint"></i> AMBIL FOTO & ABSEN
+        </button>
+    </form>
+</div>
+
+<div id="overlay" class="overlay"></div>
+<div id="notifSukses" class="notif-sukses">
+    <i class="fas fa-check-circle"></i>
+    <h2>Absen Berhasil!</h2>
+    <p>Data kehadiran Anda telah tersimpan. Halaman akan dialihkan dalam 3 detik.</p>
+    <button onclick="window.location.href='/'" class="btn-absen" style="background: var(--p); margin-top: 15px;">Kembali Sekarang</button>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const gpsStatus = document.getElementById('gpsStatus');
+
+    // 1. Akses Kamera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { alert("Gagal akses kamera: " + err); });
+
+    // 2. Akses GPS
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(pos => {
+            document.getElementById('lat').value = pos.coords.latitude;
+            document.getElementById('lng').value = pos.coords.longitude;
+            gpsStatus.innerHTML = `<i class="fas fa-check"></i> Lokasi Terkunci: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+            gpsStatus.style.background = "#dcfce7";
+            gpsStatus.style.color = "#166534";
+            btnSubmit.disabled = false;
+        }, err => {
+            gpsStatus.innerHTML = `<i class="fas fa-times"></i> GPS Tidak Aktif!`;
+            gpsStatus.style.background = "#fee2e2";
+            gpsStatus.style.color = "#991b1b";
+        });
+    }
+
+    // 3. Proses Ambil Foto & Kirim
+    btnSubmit.addEventListener('click', () => {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengirim...`;
+
+        // Capture Foto ke Canvas
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1); // Mirroring foto agar sesuai tampilan video
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Ubah foto ke format Blob
+        canvas.toBlob(blob => {
+            const formData = new FormData();
+            formData.append('foto_selfie', blob, 'selfie.jpg');
+            formData.append('latitude', document.getElementById('lat').value);
+            formData.append('longitude', document.getElementById('lng').value);
+
+            // Kirim ke Server
+            fetch('/admin/submit-absen-guru', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    tampilkanNotif();
+                } else {
+                    alert("Gagal: " + data.message);
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = `<i class="fas fa-fingerprint"></i> COBA LAGI`;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Terjadi kesalahan koneksi.");
+            });
+        }, 'image/jpeg', 0.8);
+    });
+
+    function tampilkanNotif() {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('notifSukses').style.display = 'block';
+        
+        // Redirect otomatis setelah 3 detik
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 3000);
+    }
+</script>
+
+</body>
+</html>

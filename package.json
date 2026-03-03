@@ -1,0 +1,26 @@
+{
+  "name": "aplikasisekolah",
+  "version": "1.0.0",
+  "description": "Sistem Absensi Sekolah dengan QR Code",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.4",
+    "csv-parser": "^3.2.0",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.18.2",
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
+  }
+}
